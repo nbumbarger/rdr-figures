@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<style>
+
+.d3-tip {
+  font-family: Helvetica, sans-serif;
+  font-size: 11px;
+  line-height: 1;
+  padding: 5px;
+  background: rgb(97, 155, 195);
+  color: #fff;
+  border-radius: 2px;
+  opacity: 0;
+}
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgb(97, 155, 195);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+/* 1D scatterplot */
+.scatterplot text {
+  font-family: Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  fill: rgb(254, 104, 42);
+}
+.scatterplot line {
+  stroke: rgb(147,147,147);
+  stroke-width: 2;
+}
+
+/* Bar chart */
+.chart {
+  font-family: Helvetica, sans-serif;
+  font-size: 11px;
+}
+.chart .axis path,
+.chart .axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.chart .x.axis path {
+  display: none;
+}
+.chart .bar {
+  stroke: rgb(240, 235, 228);
+  stroke-width:2px;
+  fill: rgba(249, 92, 34, 1);
+  border-radius: 10px;
+  border-width: 5px;
+}
+
+
+</style>
+<body>
+<script src='http://d3js.org/d3.v3.min.js'></script>
+<script src='http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js'></script>
+<script>
+
+function barchart(parent, metric) {
+
+  var jsonData = 'https://raw.githubusercontent.com/developmentseed/ranking-digital-rights/develop/app/assets/static/overview.json?token=AJCGAKrkA0qZb6j674Vw3ck4GLmttSnYks5WFWdjwA%3D%3D';
+
+  // Define margins using Bostock conventions http://bl.ocks.org/mbostock/3019563
+  var margin = {top: 40, right: 20, bottom: 55, left: 40},
+      width = 800 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+  // Place svg container in page element
+  var chart = d3.select(parent)
+      // Set up chart with margins group
+      .append('svg')
+        .attr('class', 'chart')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+  // Define static elements, such as the axes...
+  var x = d3.scale.ordinal()
+      .rangeRoundBands([0, width], .025);
+  var y = d3.scale.linear()
+      .range([height, 0]);
+  // ...the tick marks....
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient('bottom')
+      .tickSize(0);
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient('left');
+  // ...and the tooltip extension...
+  var tip = d3.tip()
+    .attr('class', 'd3-tip')
+    .offset([-10, 0]);
+  chart.call(tip);
+  // ... and the bar array.
+  var bars = [];
+
+  // Load the JSON data
+  d3.json(jsonData, function(error, data) {
+    // Sort data descending
+    data.sort(function(a, b) { return b.total - a.total; });
+    // Set the x domain based on the listed names
+    x.domain(data.map(function(d) { return d.display; }));
+    // Set the x domain based on the data's highest value
+    y.domain([0, d3.max(data, function(d) { return d.total; })]);
+
+    // Add groups for x and y axes labels
+    chart.append('g')
+      .attr('class', 'x axis')
+      .attr('transform', 'translate(0,' + height + ')')
+      .call(xAxis)
+      .selectAll('text')
+        .style('text-anchor', 'end')
+        .attr('transform', 'rotate(-35)' );
+    chart.append('g')
+      .attr('class', 'y axis')
+      .call(yAxis)
+      .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 6)
+        .attr('dy', '.71em')
+        .style('text-anchor', 'end')
+
+    // Add bars and bind them to the data
+    var chartData = chart.selectAll('.bar')
+      .data(data)
+      .enter();
+
+    bars = chartData.append('rect')
+      .attr('class', 'bar')
+      // Position and size the bars
+      .attr('rx', 15)
+      .attr('x', function(d) { return x(d.display); })
+      .attr('width', x.rangeBand())
+      .attr('y', function(d) { return 0; })
+      .attr('height', function(d) { return height; })
+      // Set bar hover response
+      .on('mouseover', function(d) {
+        // Select and decrease currrent RGB values, save old values to fill-old attribute
+        if((r = d3.select(this).style('fill').match(/(\d+),\s*(\d+),\s*(\d+)/i))) {
+          for(var i = 1; i < 4; i++) {
+            r[i] = Math.round(r[i] * .65);
+          };
+          d3.select(this).attr('fill-old', d3.select(this).style('fill'));
+          d3.select(this).style('fill', 'rgb('+r[1]+','+r[2]+','+r[3]+')');
+        };
+        // Show tooltip
+        tip.show(d).style('opacity', 0);
+        d3.select('.d3-tip')
+        .transition()
+          .duration(400)
+          .style('opacity', 1);
+      })
+      .on('mouseout', function(d) {
+        // Set fill back to innactive value
+        if(d3.select(this).attr('fill-old')) {
+          d3.select(this).style('fill', d3.select(this).attr('fill-old'));
+        };
+        // Hide tooltip
+        d3.select('.d3-tip')
+        .transition()
+          .delay(200)
+          .duration(400)
+          .style('opacity', 0);
+      })
+      // Set bar click event (redirrect)
+      .on('click', function(d) {
+          console.log("would redirrect to " + d.name + "'s page");
+      });
+
+    updateBars(metric);
+  });
+  // Update bar values
+  function updateBars(metric) {
+    tip.html(function(d) {
+      return '<strong>' + capitalize(metric) + ':</strong> ' + d[metric] + '</span>';
+    });
+    bars.transition()
+      .duration(200)
+      .attr('y', function(d) { return y(d[metric]); })
+      .attr('height', function(d) { return height - y(d[metric]);
+    });
+  };
+  // Capitalize first letter of string
+  function capitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+};
+
+  barchart('body', 'total');
+
+
+</script>

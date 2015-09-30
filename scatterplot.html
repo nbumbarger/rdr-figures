@@ -1,0 +1,153 @@
+<!doctype html>
+<html class="no-js" lang="">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="http://d3js.org/d3.v3.js"></script>
+    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+ <style>
+    .d3-tip {
+      font-family: Helvetica, sans-serif;
+      font-size: 11px;
+      line-height: 1;
+      padding: 5px;
+      background: rgb(97, 155, 195);
+      color: #fff;
+      border-radius: 2px;
+      opacity: 0;
+    }
+    .d3-tip:after {
+      box-sizing: border-box;
+      display: inline;
+      font-size: 10px;
+      width: 100%;
+      line-height: 1;
+      color: rgb(97, 155, 195);
+      content: "\25BC";
+      position: absolute;
+      text-align: center;
+    }
+    .d3-tip.n:after {
+      margin: -1px 0 0 0;
+      top: 100%;
+      left: 0;
+    }
+   .scatterplot text {
+     font-size: 11px;
+     font-family: Helvetica, sans-serif;
+     font-weight: 600;
+     fill: rgb(254, 104, 42);
+   }
+    .scatterplot line {
+      stroke: rgb(147,147,147);
+      stroke-width: 2;
+   }
+   .scatterplot active {
+    fill: red;
+   }
+ </style>
+</head>
+<body>
+
+<script>
+
+  function oneDimensionalScatterplot(parent, company, metric) {
+    var jsonData = 'https://raw.githubusercontent.com/developmentseed/ranking-digital-rights/develop/app/assets/static/overview.json?token=AJCGAKrkA0qZb6j674Vw3ck4GLmttSnYks5WFWdjwA%3D%3D';
+    var width = 400,
+        height = 60,
+        dataFill = 'rgb(147,147,147)',
+        activeFill = 'rgb(254, 104, 42)';
+
+    // Place svg container in page element
+    var chart = d3.select(parent)
+        .append('svg')
+        .attr('width', width + 30)
+        .attr('height', height)
+        .attr('class', 'scatterplot')
+    // Define static elements, such as the axis...
+    var line = chart.append('line')
+        .attr('x1', 0)
+        .attr('y1', height / 2)
+        .attr('x2', width)
+        .attr('y2', height / 2)
+    // ...the width of the axis, leaving room for text...
+    var x = d3.scale.linear()
+        .range([0, width -20]);
+    // ... and the tooltip extension.
+    var tip = d3.tip()
+        .attr('class', 'd3-tip')
+        .offset([-5, 0])
+        .html(function(d) {
+          return "<strong>" + d.display + "</strong> " + d[metric] + "</span>";
+        });
+    chart.call(tip);
+
+    // Load the JSON data
+    d3.json(jsonData, function(data) {
+      // Set the x domain based on the data's highest value
+      x.domain([0, d3.max(data, function(d) { return d[metric] })]);
+      // Add a group for the datapoints, and bind it to the data
+      var chartData = chart.selectAll('g')
+          .data(data)
+          .enter()
+
+      var circle = chartData.append('circle')
+          // Position and size the datapoints
+          .attr('cy', height / 2)
+          .attr('cx', function(d) { return x(d[metric]); })
+          .attr('r', function(d) {
+            if (d.display !== company) { return 5; }
+            else { return 7; }
+           })
+          // Set fill style for the datapoints
+          .style('fill', function(d) {
+            if (d.display !== company) { return dataFill; }
+            else { return activeFill; }
+           })
+          // Set datapoint hover response (fade tooltip, enlarge datapoint)
+          .on('mouseover', function(d) {
+            tip.show(d).style('opacity', 0)
+            d3.select('.d3-tip')
+            .transition()
+              .duration(400)
+              .style('opacity', .8)
+            d3.select(this).attr('r', +d3.select(this).attr('r') + 2)
+          })
+          .on('mouseout', function(d) {
+            d3.select('.d3-tip')
+            .transition()
+              .delay(200)
+              .duration(400)
+              .style('opacity', 0)
+            d3.select(this).attr('r', +d3.select(this).attr('r') - 2)
+          })
+          // Set datapoint click event (enlarge, possibly redirrect)
+          .on('mousedown', function(d) {
+            if (d.display !== company) {
+              d3.select(this).attr('r', 8)
+              console.log('would redirrect to ' + d.name + "'s page")
+            };
+          })
+          .on('mouseup', function(d) {
+            if (d.display !== company) { d3.select(this).attr('r', 7); }
+          });
+
+      // Label the active datapoint
+      var label = chartData.append("text")
+          .attr("x", function(d) { return x(d[metric]) - 17 + 'px'; })
+          .attr("y", function(d) { return height - 42 + 'px'; })
+          .text(function(d) {
+            if (d.display === company) { return Math.round(d[metric]) + '/100'; }
+          });
+    });
+  };
+
+oneDimensionalScatterplot('body', 'Twitter', 'total')
+
+</script>
+
+</body>
+</html>
