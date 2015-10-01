@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<head>
+<meta charset='utf-8'>
+<style>
+</style>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>
+<style>
+  .donut__text {
+    font-family: Helvetica;
+  }
+  .donut__text--bold {
+    font-family: Helvetica;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<script>
+
+  function donutchart(parent, data) {
+    var diameter = 400;
+
+    var width = diameter;
+    var height = diameter;
+    var palette = ['#fbfbfb', '#ff9e2a', '#d8fb57', '#58d7ff', '#ff80ec', '#fcff68',
+                   '#686eff', '#D8B982', '#ca68ff', '#6EFFB6', '#ffa6a6'];
+    var fullLabel = { general:'General Human Rights',
+                      expression: 'Freedom of Expression',
+                      privacy: 'Privacy' };
+
+    if (data.length === 1) {
+      // Set the correct diameter for single-metric figures
+      diameter = diameter * 0.8;
+      // Set the correct color for single-metric figures
+      switch (data[0].label) {
+        case 'general': palette = [palette[0], palette[1]]; break;
+        case 'expression': palette = [palette[0], palette[2]]; break;
+        case 'privacy': palette = [palette[0], palette[3]]; break;
+      };
+    };
+
+    var radius = diameter / 2;
+    var donutWidth = diameter / 7.5;
+    var fontSize = diameter * .006;
+    var color = d3.scale.ordinal().range(palette);
+
+    // Add the total score to the score object
+    for (var i = 0, total = 0, maxscore = 0; i < data.length; i++) {
+      total += dataset[i].score; maxscore += dataset[i].maxscore
+    };
+    data.unshift({'label':'remainder', 'score': maxscore - total, 'maxscore': maxscore});
+
+    // Place svg container in page element
+    var svg = d3.select(parent)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
+
+    // Set the size of the arcs
+    var arc = d3.svg.arc()
+      .innerRadius(radius - donutWidth)
+      .outerRadius(radius);
+
+    // Attach data to a pie layout
+    var pie = d3.layout.pie()
+      .value(function (d) { return d.score; })
+      .sort(null);
+    var g = svg.selectAll('arc')
+      .data(pie(data))
+      .enter()
+      .append('g')
+      .attr('class', 'arc');
+
+    // Define common label styles
+    var labelText = svg.append('text')
+      .style('text-anchor', 'middle')
+      .attr('class', 'donut__text--bold')
+      .attr('fill', '#000');
+    var scoreText = svg.append('text')
+      .style('text-anchor', 'middle')
+      .attr('fill', '#000')
+      .text(function (d) { return data[0].maxscore - data[0].score + '/' + data[0].maxscore });
+
+    // Define label styles for single metric figures
+    if (data.length === 2) {
+      labelText
+        .attr('y', height / 2)
+        .style('font-size', fontSize * 0.81 + 'em')
+        .text(function (d) { return fullLabel[data[1].label]; });
+      scoreText
+        .attr('dy',  '.4em')
+        .attr('class', 'donut__text--bold')
+        .style('font-size', fontSize*1.75 + 'em');
+    }
+    // Define label styles for multi-metric figures
+    else if (data.length > 2) {
+      labelText
+        .attr('dy', '-0.5em')
+        .style('font-size', fontSize + 'em')
+        .text(function (d) { return 'total'; });
+      scoreText
+        .attr('dy', '1em')
+        .attr('class', 'donut__text')
+        .style('font-size', fontSize + 'em');
+    };
+
+    // Add the arcs to the group
+    var path = g.append('path')
+      .attr('d', arc)
+      .attr('fill', function (d, i) {
+        return color(i);
+      });
+
+      // Add hover behavior to multi-metric figures
+      if (data.length > 2) {
+        path.on('mouseover', function (d) {
+          // Select and decrease currrent RGB values, save old values to fill-old attribute, except for the remainder
+          if ( d.data.label !== 'remainder' && (r = d3.select(this).style('fill').match(/(\d+),\s*(\d+),\s*(\d+)/i))) {
+            for (var i = 1; i < 4; i++) {
+              r[i] = Math.round(r[i] * 0.85);
+            };
+            d3.select(this).attr('fill-old', d3.select(this).style('fill'));
+            d3.select(this).style('fill', 'rgb(' + r[1] + ',' + r[2] + ',' + r[3] + ')');
+            // Update text values
+            labelText.text(function () {return d.data.label });
+            scoreText.text(function () {return d.data.score + '/' + d.data.maxscore; });
+          };
+        });
+        path.on('mouseout', function (d) {
+          // Set fill back to innactive value
+          if (d3.select(this).attr('fill-old')) {
+            d3.select(this).style('fill', d3.select(this).attr('fill-old'));
+          };
+          // Revert text values
+          labelText.text(function () {return 'overall' });
+          scoreText.text(function () {return data[0].maxscore - data[0].score + '/' + data[0].maxscore; });
+        });
+    };
+    // Capitalize first letter of string
+    function capitalize (string) {
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    };
+  };
+
+
+
+  var dataset = [
+    { label: 'general', score: 35, maxscore: 40 },
+    { label: 'expression', score: 26, maxscore: 30 },
+    { label: 'privacy', score: 13, maxscore: 30 },
+    { label: 'extra-1', score: 29, maxscore: 30 },
+    { label: 'extra-2', score: 18, maxscore: 30 },
+    { label: 'extra-3', score: 11, maxscore: 30 },
+    { label: 'extra-4', score: 22, maxscore: 30 },
+    { label: 'extra-5', score: 25, maxscore: 30 },
+    { label: 'extra-6', score: 14, maxscore: 30 },
+    { label: 'extra-7', score: 28, maxscore: 30 },
+
+  ];
+
+  donutchart('body', dataset)
+
+</script>
+</body>
