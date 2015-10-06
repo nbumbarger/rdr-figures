@@ -1,12 +1,8 @@
 <!DOCTYPE html>
 <head>
 <meta charset="utf-8">
-
 <script src="d3.v3.js"></script>
-<script src="d3.tip.v0.6.3.js"></script>
-
 <style>
-
 body {
   background-color: #FFFCF4;
   font-family: Helvetica, sans-serif;
@@ -28,7 +24,6 @@ font-weight: bold;
 text-transform: uppercase;
 }
 
-
 text[class*="name-"] {
   font-size: .85em;
   font-weight: bold;
@@ -37,15 +32,6 @@ text[class*="name-"] {
 
 text[class*="name-"].active {
   fill: #4d4948;
-}
-
-text[class*="scores-"] {
-  font-size:.75em;
-  display: none;
-}
-
-text[class*="scores-"].active {
-  display: inline;
 }
 
 .line {
@@ -70,8 +56,18 @@ circle[class*="dot-"].active {
   display: inline;
 }
 
+text[class*="scores-"] {
+  font-size:.75em;
+  display: none;
+}
+
+text[class*="scores-"].active {
+  display: inline;
+}
+
 </style>
 </head>
+
 <body>
 <script>
 
@@ -155,8 +151,9 @@ var line = lineGroup.append("path")
 var companyName = lineGroup.append("text")
   .text( function (d) { return d[0].display + ' ' + d[0].value; })
   .attr('class', function (d) { return 'name name-' + d[0].id; })
+  .attr('text-anchor', 'end')
   .attr('y', function (d) { return y(d[0].value); })
-  .attr('x', -margin.right );
+  .attr('x', padding - 10 );
 
 // Add dots for each datapoint
 var dots = lineGroup.selectAll("circle")
