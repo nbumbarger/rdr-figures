@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+
+<script src="d3.v3.js"></script>
+<script src="d3.tip.v0.6.3.js"></script>
+
+<style>
+
+body {
+  background-color: #FFFCF4;
+  font-family: Helvetica, sans-serif;
+}
+
+.axis path {
+  fill: none;
+}
+
+.x.axis line {
+  fill: none;
+  stroke: #bdb8bd;
+  stroke-width: 2;
+}
+
+.x.axis text {
+font-size: .75em;
+font-weight: bold;
+text-transform: uppercase;
+}
+
+
+text[class*="name-"] {
+  font-size: .85em;
+  font-weight: bold;
+  fill: #8e8d8a;
+}
+
+text[class*="name-"].active {
+  fill: #4d4948;
+}
+
+text[class*="scores-"] {
+  font-size:.75em;
+  display: none;
+}
+
+text[class*="scores-"].active {
+  display: inline;
+}
+
+.line {
+  stroke: #717171;
+  fill: none;
+  stroke-width: 2px;
+}
+
+.line.active {
+  stroke: #fe682a;
+}
+
+circle[class*="dot-"] {
+  fill: #fe682a;
+  stroke: #ed1e79;
+  stroke-width: 1;
+  r: 5;
+  display: none;
+}
+
+circle[class*="dot-"].active {
+  display: inline;
+}
+
+</style>
+</head>
+<body>
+<script>
+
+var parent = 'body'
+var width = 800
+var height = 600
+var maxY = 90
+
+// Copy of overview.js
+var inputData = [{"commitment": "10.83", "name": "americaMovil", "privacy": "24.86", "telco": "true", "total": "17.45", "expression": "16.67", "id": "americamovil", "display": "America Movil"}, {"commitment": "52.78", "name": "at&t", "privacy": "51.81", "telco": "true", "total": "48.45", "expression": "40.76", "id": "att", "display": "AT&T"}, {"commitment": "0", "name": "axiata", "privacy": "22.07", "telco": "true", "total": "14.02", "expression": "20", "id": "axiata", "display": "Axiata"}, {"commitment": "12.5", "name": "bhartiAirtel", "privacy": "25.19", "telco": "true", "total": "18.4", "expression": "17.5", "id": "bhartiairtel", "display": "Bharti Airtel"}, {"commitment": "29.07", "name": "daumKakao", "privacy": "42.37", "telco": "false", "total": "41.87", "expression": "54.17", "id": "daumkakao", "display": "Daum Kakao"}, {"commitment": "3.33", "name": "etisalat", "privacy": "13.39", "telco": "true", "total": "11.96", "expression": "19.17", "id": "etisalat", "display": "Etisalat"}, {"commitment": "53.06", "name": "facebook", "privacy": "30.62", "telco": "false", "total": "37.37", "expression": "28.43", "id": "facebook", "display": "Facebook"}, {"commitment": "75.09", "name": "google", "privacy": "53.06", "telco": "false", "total": "63.99", "expression": "63.82", "id": "google", "display": "Google"}, {"commitment": "2.22", "name": "mailRu", "privacy": "13.11", "telco": "false", "total": "14.55", "expression": "28.33", "id": "mailru", "display": "Mail.Ru"}, {"commitment": "79.54", "name": "microsoft", "privacy": "48.62", "telco": "false", "total": "54.2", "expression": "34.44", "id": "microsoft", "display": "Microsoft"}, {"commitment": "22.22", "name": "mtn", "privacy": "16.61", "telco": "true", "total": "19.06", "expression": "18.33", "id": "mtn", "display": "MTN"}, {"commitment": "65.93", "name": "orange", "privacy": "26.63", "telco": "true", "total": "41.68", "expression": "32.5", "id": "orange", "display": "Orange"}, {"commitment": "2.08", "name": "tencent", "privacy": "19", "telco": "false", "total": "13.32", "expression": "18.89", "id": "tencent", "display": "Tencent"}, {"commitment": "20.97", "name": "twitter", "privacy": "50.5", "telco": "false", "total": "41.83", "expression": "54.03", "id": "twitter", "display": "Twitter"}, {"commitment": "79.03", "name": "vodafone", "privacy": "41.44", "telco": "true", "total": "56.41", "expression": "48.75", "id": "vodafone", "display": "Vodafone"}, {"commitment": "80.19", "name": "yahoo", "privacy": "49.65", "telco": "false", "total": "57.86", "expression": "43.75", "id": "yahoo", "display": "Yahoo"}]
+
+// Set up data object
+var data = []
+for (var i = 0; i < inputData.length; i++) {
+  data.push( [
+    {metric:'overall', value:inputData[i].total, id:inputData[i].id, display:inputData[i].display},
+    {metric:'general', value:inputData[i].commitment, id:inputData[i].id, display:inputData[i].display},
+    {metric:'privacy', value:inputData[i].expression, id:inputData[i].id, display:inputData[i].display},
+    {metric:'expression', value:inputData[i].privacy, id:inputData[i].id, display:inputData[i].display}
+    ])
+  }
+
+// Define margins
+var margin = {top: 30, right: 80, bottom: 30, left: 90};
+width = width - margin.left - margin.right;
+height = height - margin.top - margin.bottom;
+
+// Full names for x-axis labels
+var fullLabel = { overall: 'Overall',
+                  general:'Human Rights',
+                  privacy: 'Privacy',
+                  expression: 'Freedom of Expression' };
+
+// Define scales
+var x = d3.scale.ordinal();
+var y = d3.scale.linear().range([height, 0]);
+
+// Define ordinal x-axis
+var xAxis = d3.svg.axis()
+  .scale(x)
+  .tickSize(-(height + margin.top / 4))
+  .tickSubdivide(true)
+  .orient("top");
+
+// Define line generator, with categories along x and values along y
+var lineFunction = d3.svg.line()
+  .x(function (d) { return x(fullLabel[d.metric]); })
+  .y(function (d) { return y(d.value); })
+  .interpolate("linear");
+
+// Place svg container in parent element, with group for chart
+var svg = d3.select(parent).append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+// Set the x domain as categorical values; y as selectable maximum score
+var padding = width / (data[0].length + 1) / 2;
+x.domain(data[0].map(function (d) { return fullLabel[d.metric]; }))
+  .rangePoints([padding, width-padding]);
+y.domain([0, maxY]);
+
+// Add the x-axis
+svg.append("g")
+  .call(xAxis)
+  .attr("class", "x axis")
+  .attr("transform", "translate(0," + -(margin.top / 4) + ")");
+
+// Create a group for each line
+var lineGroup = svg.selectAll(".line-group")
+  .data(data)
+  .enter().append("g")
+
+// Add a line to each line group
+var line = lineGroup.append("path")
+  .attr('class', function (d, i) { return 'line line-' + d[0].id; })
+  .attr("d", function (d, i) { return lineFunction(d); });
+
+// Append the company name to the line, on the y-axis
+var companyName = lineGroup.append("text")
+  .text( function (d) { return d[0].display + ' ' + d[0].value; })
+  .attr('class', function (d) { return 'name name-' + d[0].id; })
+  .attr('y', function (d) { return y(d[0].value); })
+  .attr('x', -margin.right );
+
+// Add dots for each datapoint
+var dots = lineGroup.selectAll("circle")
+  .data(function (d) { return d; })
+  .enter().append("circle")
+    .attr('class', function (d) { return 'dot dot-' + d.id; })
+    .attr("cx", function (d) { return x(fullLabel[d.metric]); })
+    .attr("cy", function (d) { return y(d.value); });
+
+// Add labels for each datapoint
+lineGroup.selectAll("label")
+  .data(function (d) { return d; })
+  .enter().append("text")
+    .text(function (d) { return d.value; })
+    .attr('class', function (d) { return 'scores scores-' + d.id; })
+    .attr("x", function (d) { return x(fullLabel[d.metric]) + 10; })
+    .attr("y", function (d) { return y(d.value) -5; });
+
+    // Add hover behavior to lines and company names
+    line.on('mouseover', function (d) { lineOn(d, this); })
+    line.on('mouseout', function () { lineOff(this); });
+    companyName.on('mouseover', function (d) {
+      activeLine = d3.select('.line-' + d[0].id).classed('active', true)[0][0];
+      lineOn(d, activeLine);
+    });
+    companyName.on('mouseout', function (d) {
+      activeLine = d3.select('.line-' + d[0].id).classed('active', true)[0][0];
+      lineOff(activeLine);
+    });
+
+  function lineOn (d, activeLine) {
+    // Bring group to top layer of drawing
+    activeLine.parentNode.parentNode.appendChild(activeLine.parentNode);
+    // Set all line components to active
+    d3.select('.name-' + d[0].id).classed('active', true);
+    d3.selectAll('.scores-' + d[0].id).classed('active', true);
+    d3.selectAll('.dot-' + d[0].id).classed('active', true);
+    d3.select('.line-' + d[0].id).classed('active', true);
+  }
+
+  function lineOff (activeLine) {
+    d3.selectAll('.name').classed('active', false);
+    d3.selectAll('.scores').classed('active', false);
+    d3.selectAll('.dot').classed('active', false);
+    d3.select(activeLine).classed('active', false);
+  }
+
+  arrangeLabels()
+  // Implements force-directed labeling to avoid overlap of company names on y axis
+  // http://bl.ocks.org/larskotthoff/11406992
+  function arrangeLabels() {
+    var move = 1;
+    while(move > 0) {
+      move = 0;
+      svg.selectAll(".name")
+        .each(function() {
+          var that = this;
+          var a = this.getBoundingClientRect();
+          svg.selectAll(".name")
+            .each(function() {
+              if(this != that) {
+                var b = this.getBoundingClientRect();
+                if((Math.abs(a.left - b.left) * 2 < (a.width + b.width)) &&
+                  (Math.abs(a.top - b.top) * 2 < (a.height + b.height))) {
+                    var dx = 0;
+                    var dy = (Math.max(0, a.bottom - b.top) +
+                              Math.min(0, a.top - b.bottom)) * 0.02;
+                    var tt = d3.transform(d3.select(this).attr("transform"));
+                    var to = d3.transform(d3.select(that).attr("transform"));
+                    move += Math.abs(dx) + Math.abs(dy);
+                    to.translate = [ to.translate[0] + dx, to.translate[1] + dy ];
+                    tt.translate = [ tt.translate[0] - dx, tt.translate[1] - dy ];
+                    d3.select(this).attr("transform", "translate(" + tt.translate + ")");
+                    d3.select(that).attr("transform", "translate(" + to.translate + ")");
+                    a = this.getBoundingClientRect();
+                  }
+                }
+            });
+         });
+    }
+  }
+
+</script>
+</body>
